@@ -1,0 +1,54 @@
+seed: 50
+
+split:
+  train_percent: 1    # % of CIFAR-10 train set to use
+  test_percent: 0.1    # % of CIFAR-10 test set to use
+
+model:
+  latent_channels: 128
+  num_classes: 10
+  pretrained: true
+
+baseline:
+  train:
+    epochs: 1
+    learning_rate: 0.001
+
+ae:
+  freeze: false
+  recon_loss_weight: 0.5
+  train:
+    epochs: 5
+    batch_size: 32
+    learning_rate: 0.001
+
+vae:
+  beta: 1.0
+  freeze: false
+  recon_loss_weight: 0.5
+  train:
+    epochs: 10
+    batch_size: 64
+    learning_rate: 0.0005
+
+simclr:  # Placeholder
+  projection_dim: 128
+  temperature: 0.5
+  freeze: false
+  train:
+    epochs: 100
+    batch_size: 256
+    learning_rate: 0.001
+
+byol:    # Placeholder
+  projection_dim: 128
+  freeze: false
+  train:
+    epochs: 100
+    batch_size: 256
+    learning_rate: 0.001
+
+paths:
+  data_dir: "data"
+  results_dir: "results"
+  checkpoints_dir: "checkpoints"
