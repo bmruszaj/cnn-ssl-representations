@@ -1,0 +1,66 @@
+schema: '2.0'
+stages:
+  prepare_split:
+    cmd: python src/data/prepare_split.py
+    deps:
+    - path: src/data/prepare_split.py
+      hash: md5
+      md5: dd443eccf1b47fbf0b48c2db970aec32
+      size: 879
+    params:
+      params.yaml:
+        seed: 50
+        split.test_percent: 0.1
+        split.train_percent: 1
+    outs:
+    - path: data/cifar_split.npz
+      hash: md5
+      md5: 044aec2794f209f6cf92a3c813f8d7bc
+      size: 2560
+  train_baseline:
+    cmd: python experiments/train_baseline.py
+    deps:
+    - path: data/cifar_split.npz
+      hash: md5
+      md5: 044aec2794f209f6cf92a3c813f8d7bc
+      size: 2560
+    - path: experiments/train_baseline.py
+      hash: md5
+      md5: 96b61863992d706a95efd46a23f94016
+      size: 1890
+    params:
+      params.yaml:
+        baseline.train.epochs: 1
+        baseline.train.learning_rate: 0.001
+        model.latent_channels: 128
+        model.num_classes: 10
+        model.pretrained: true
+    outs:
+    - path: checkpoints/baseline_model.pt
+      hash: md5
+      md5: d09350514362810fb7434626e36cbeb9
+      size: 44806256
+  evaluate@baseline:
+    cmd: python experiments/evaluate.py --model_type baseline
+    deps:
+    - path: checkpoints/baseline_model.pt
+      hash: md5
+      md5: d09350514362810fb7434626e36cbeb9
+      size: 44806256
+    - path: data/cifar_split.npz
+      hash: md5
+      md5: 044aec2794f209f6cf92a3c813f8d7bc
+      size: 2560
+    - path: experiments/evaluate.py
+      hash: md5
+      md5: 224f08695e2e75bdc7fbef01c3c94c98
+      size: 2606
+    params:
+      params.yaml:
+        model.latent_channels: 128
+        model.num_classes: 10
+    outs:
+    - path: results/baseline_acc.json
+      hash: md5
+      md5: 86d6817a6bd496677c1edb5208c84aa4
+      size: 24

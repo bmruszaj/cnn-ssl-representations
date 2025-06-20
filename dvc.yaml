@@ -1,0 +1,101 @@
+stages:
+  prepare_split:
+    cmd: python src/data/prepare_split.py
+    deps:
+      - src/data/prepare_split.py
+    outs:
+      - data/cifar_split.npz
+    params:
+      - seed
+      - split.train_percent
+      - split.test_percent
+
+  train_baseline:
+    cmd: python experiments/train_baseline.py
+    deps:
+      - experiments/train_baseline.py
+      - data/cifar_split.npz
+    outs:
+      - checkpoints/baseline_model.pt
+    params:
+      - baseline.train.epochs
+      - baseline.train.learning_rate
+      - model.num_classes
+      - model.latent_channels
+      - model.pretrained
+
+#  train_ae:
+#    cmd: python src/train/train_ae.py
+#    deps:
+#      - src/train/train_ae.py
+#      - data/cifar/cifar_split.npz
+#    outs:
+#      - checkpoints/ae_model.pt
+#    params:
+#      - ae.train.epochs
+#      - ae.train.learning_rate
+#      - ae.freeze
+#      - model.latent_channels
+#      - model.num_classes
+#
+#  train_vae:
+#    cmd: python src/train/train_vae.py
+#    deps:
+#      - src/train/train_vae.py
+#      - data/cifar/cifar_split.npz
+#    outs:
+#      - checkpoints/vae_model.pt
+#    params:
+#      - vae.train.epochs
+#      - vae.train.learning_rate
+#      - vae.freeze
+#      - vae.beta
+#      - model.latent_channels
+#      - model.num_classes
+
+  # train_simclr:
+  #   cmd: python src/train/train_simclr.py
+  #   deps:
+  #     - src/train/train_simclr.py
+  #     - data/cifar/cifar_split.npz
+  #   outs:
+  #     - checkpoints/simclr_model.pt
+  #   params:
+  #     - simclr.train.epochs
+  #     - simclr.train.learning_rate
+  #     - simclr.freeze
+  #     - model.latent_channels
+  #     - model.num_classes
+
+  # train_byol:
+  #   cmd: python src/train/train_byol.py
+  #   deps:
+  #     - src/train/train_byol.py
+  #     - data/cifar/cifar_split.npz
+  #   outs:
+  #     - checkpoints/byol_model.pt
+  #   params:
+  #     - byol.train.epochs
+  #     - byol.train.learning_rate
+  #     - byol.freeze
+  #     - model.latent_channels
+  #     - model.num_classes
+
+  evaluate:
+    foreach:
+      - baseline
+#      - ae
+#      - vae
+      # - simclr
+      # - byol
+    do:
+      cmd: python experiments/evaluate.py --model_type ${item}
+      deps:
+        - experiments/evaluate.py
+        - checkpoints/${item}_model.pt
+        - data/cifar_split.npz
+      outs:
+        - results/${item}_acc.json
+      params:
+        - model.latent_channels
+        - model.num_classes
