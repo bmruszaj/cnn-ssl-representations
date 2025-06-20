@@ -13,3 +13,13 @@ build_image:
 
 run_container:
 	docker run --rm $(GPU_FLAG) -p $(PORT):8888 -v `pwd`:/assignment --name representation_learning representation_learning
+
+# Safe autofix (check + format)
+lint:
+	ruff check . --fix
+	ruff format .
+
+# Aggressive autofix (includes unsafe fixes)
+lint-unsafe:
+	ruff check . --fix --unsafe-fixes
+	ruff format .
