@@ -23,13 +23,19 @@ ae:
     learning_rate: 0.001
 
 vae:
-  beta: 1.0
+  beta: 10.0
+  hidden_ch: 256
+  latent_ch: 128
   freeze: false
-  recon_loss_weight: 0.5
+  pretrain:
+    epochs: 1
+    learning_rate: 0.0001
   train:
-    epochs: 10
+    epochs: 1
     batch_size: 64
-    learning_rate: 0.0005
+    cls_loss_weight: 5
+    learning_rate: 0.0001
+    weight_decay: 0.000001
 
 simclr:  # Placeholder
   projection_dim: 128
@@ -52,3 +58,4 @@ paths:
   data_dir: "data"
   results_dir: "results"
   checkpoints_dir: "checkpoints"
+  pretrain_dir: "pretrained"

@@ -11,10 +11,11 @@ from src.data.loaders import get_loaders
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 params: Dict[str, Any] = load_yaml()
-ALLOWED: tuple[Literal["baseline", "ae", "vae", "simclr", "byol"], ...] = (
+ALLOWED: tuple[Literal["baseline", "ae", "vae", "vae_pretrained", "simclr", "byol"], ...] = (
     "baseline",
     "ae",
     "vae",
+    "vae_pretrained",
     "simclr",
     "byol",
 )
