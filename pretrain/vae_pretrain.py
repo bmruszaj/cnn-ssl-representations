@@ -31,9 +31,10 @@ def pretrain_vae():
         num_classes=params['model']['num_classes'],
     ).to(device)
 
-    vae = model.maxpool
+    vae = model.avgpool
+    # Freeze all parameters except the VAE (avgpool)
     for name, p in model.named_parameters():
-        if not name.startswith('maxpool'):
+        if not name.startswith('avgpool'):
             p.requires_grad = False
 
     optimizer = optim.AdamW(
@@ -53,11 +54,19 @@ def pretrain_vae():
         for images, _ in pbar:
             images = images.to(device)
 
+            # Extract late features (after layer4) without tracking gradients
             with torch.no_grad():
                 x = model.conv1(images)
                 x = model.bn1(x)
                 x = model.relu(x)
-            feats = x
+                x = model.maxpool(x)
+
+                x = model.layer1(x)
+                x = model.layer2(x)
+                x = model.layer3(x)
+                x = model.layer4(x)
+
+            feats = x  # 512-channel features from the last layer
 
             optimizer.zero_grad()
             recon = vae(feats)

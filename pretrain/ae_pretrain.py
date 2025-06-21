@@ -27,9 +27,9 @@ def pretrain_ae():
         num_classes=params['model']['num_classes'],
     ).to(device)
 
-    ae = model.maxpool
+    ae = model.avgpool
     for name, p in model.named_parameters():
-        if not name.startswith('maxpool'):
+        if not name.startswith('avgpool'):
             p.requires_grad = False
 
     optimizer = optim.AdamW(

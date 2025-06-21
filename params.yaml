@@ -1,8 +1,8 @@
 seed: 50
 
 split:
-  train_percent: 1    # % of CIFAR-10 train set to use
-  test_percent: 0.1   # % of CIFAR-10 test set to use
+  train_percent: 5    # % of CIFAR-10 train set to use
+  test_percent: 1   # % of CIFAR-10 test set to use
 
 model:
   latent_channels: 128
@@ -11,17 +11,17 @@ model:
 
 baseline:
   train:
-    epochs: 1
+    epochs: 10
     learning_rate: 0.001
 
 ae:
   freeze: false
   recon_loss_weight: 0.5
   pretrain:
-    epochs: 1            # AE pretraining epochs
+    epochs: 10            # AE pretraining epochs
     learning_rate: 0.001 # AE pretraining LR
   train:
-    epochs: 5
+    epochs: 10
     batch_size: 32
     learning_rate: 0.001
     cls_loss_weight: 1.0
@@ -32,10 +32,10 @@ vae:
   latent_ch: 128
   freeze: false
   pretrain:
-    epochs: 1
+    epochs: 10
     learning_rate: 0.0001
   train:
-    epochs: 1
+    epochs: 10
     batch_size: 64
     cls_loss_weight: 5
     learning_rate: 0.0001

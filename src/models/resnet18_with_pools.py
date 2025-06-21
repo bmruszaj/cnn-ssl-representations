@@ -1,5 +1,5 @@
 # resnet18_with_pools.py
-"""Build ResNet‑18 with a pluggable replacement for the first MaxPool2d layer.
+"""Build ResNet‑18 with a pluggable replacement for the final AvgPool2d layer.
 
 Supported `pool_type` values:
     "max"   – leave the original MaxPool2d
@@ -43,7 +43,12 @@ def build_resnet18(
     model = resnet18(weights=weights)
 
     if pool_type != "max":
-        in_ch = model.conv1.out_channels
+        # For AE we use early features (64 channels from conv1)
+        # For VAE we use late features (512 channels from layer4)
+        if pool_type in ("ae", "ae_pretrained"):
+            in_ch = model.conv1.out_channels  # 64 channels for early features
+        else:
+            in_ch = 512  # 512 channels from layer4 output for VAE and other models
 
         if pool_type in ("ae", "ae_pretrained"):
             block: nn.Module = AE(in_ch, latent)
@@ -78,7 +83,7 @@ def build_resnet18(
         else:
             raise ValueError(f"Unsupported pool_type: {pool_type!r}")
 
-        model.maxpool = block
+        model.avgpool = block
         if freeze_pool:
             _freeze(block)
 

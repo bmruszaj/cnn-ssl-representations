@@ -54,23 +54,30 @@ def train_vae_on_pooling(vae_pretrained = True):
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
 
+            # Run the image through the ResNet backbone up to the last pooling
             x = model.conv1(images)
             x = model.bn1(x)
             x = model.relu(x)
+            x = model.maxpool(x)
 
-            vae_in = x
-            recon = model.maxpool(vae_in)
-
-            x = recon
             x = model.layer1(x)
             x = model.layer2(x)
             x = model.layer3(x)
             x = model.layer4(x)
-            x = model.avgpool(x)
+
+            # Now pass through VAE instead of avgpool
+            vae_in = x  # Late features (512 channels)
+            recon = model.avgpool(vae_in)  # Using avgpool which contains the VAE
+
+            # Apply adaptive pooling like the original ResNet avgpool would do
+            # to get a tensor of shape [batch_size, channels, 1, 1]
+            x = torch.nn.functional.adaptive_avg_pool2d(recon, (1, 1))
+
+            # Flatten and pass through fully connected layer
             x = torch.flatten(x, 1)
             logits = model.fc(x)
 
-            vae_l = vae_criterion(model.maxpool, recon, vae_in)
+            vae_l = vae_criterion(model.avgpool, recon, vae_in)
             ce_l = cls_criterion(logits, labels)
             loss = vae_l + alpha * ce_l
 

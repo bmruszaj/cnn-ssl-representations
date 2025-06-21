@@ -7,18 +7,34 @@ class ConvVEncoder(nn.Module):
     def __init__(self, in_ch, hidden_ch, latent_dim):
         super().__init__()
 
-        self.conv_blocks = nn.Sequential(
-            nn.Conv2d(in_ch, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128), nn.ReLU(True),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(256), nn.ReLU(True),
-            nn.Conv2d(256, hidden_ch, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(hidden_ch), nn.ReLU(True),
-        )
+        # Check if we're dealing with late features (512 channels)
+        self.is_late_features = (in_ch == 512)
 
-        self.flatten = nn.Flatten()
-        flat_dim = hidden_ch * 14 * 14
-        self.to_mu     = nn.Linear(flat_dim, latent_dim)
+        if self.is_late_features:
+            # Architecture for 7x7 feature maps from ResNet's layer4
+            self.conv_blocks = nn.Sequential(
+                nn.Conv2d(in_ch, hidden_ch, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(hidden_ch), nn.ReLU(True),
+                nn.Conv2d(hidden_ch, hidden_ch*2, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(hidden_ch*2), nn.ReLU(True),
+                nn.AdaptiveAvgPool2d((3, 3))  # Use adaptive pooling for flexibility
+            )
+            self.flatten = nn.Flatten()
+            flat_dim = hidden_ch * 2 * 3 * 3  # Flattened dimension after adaptive pooling
+        else:
+            # Original architecture for early features
+            self.conv_blocks = nn.Sequential(
+                nn.Conv2d(in_ch, 128, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm2d(128), nn.ReLU(True),
+                nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm2d(256), nn.ReLU(True),
+                nn.Conv2d(256, hidden_ch, kernel_size=4, stride=2, padding=1),
+                nn.BatchNorm2d(hidden_ch), nn.ReLU(True),
+            )
+            self.flatten = nn.Flatten()
+            flat_dim = hidden_ch * 14 * 14
+
+        self.to_mu = nn.Linear(flat_dim, latent_dim)
         self.to_logvar = nn.Linear(flat_dim, latent_dim)
 
     def forward(self, x):
@@ -36,19 +52,41 @@ class ConvVDecoder(nn.Module):
 
         self.hidden_ch = hidden_ch
 
-        self.fc = nn.Linear(latent_dim, hidden_ch * 14 * 14)
-        self.deconv_blocks = nn.Sequential(
-            nn.ConvTranspose2d(hidden_ch, 256, 4, stride=2, padding=1),
-            nn.BatchNorm2d(256), nn.ReLU(True),
-            nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1),
-            nn.BatchNorm2d(128), nn.ReLU(True),
-            nn.ConvTranspose2d(128, out_ch, 4, stride=2, padding=1),
-            nn.Sigmoid()
-        )
+        # Check if we're dealing with late features (512 channels)
+        self.is_late_features = (out_ch == 512)
+
+        if self.is_late_features:
+            # Decoder for late features (7x7)
+            self.fc = nn.Linear(latent_dim, hidden_ch * 7 * 7)
+
+            # Directly generate the output tensor with correct dimensions
+            self.out_layer = nn.Sequential(
+                nn.BatchNorm2d(hidden_ch),
+                nn.ReLU(True),
+                nn.Conv2d(hidden_ch, out_ch, kernel_size=3, stride=1, padding=1),
+                nn.ReLU(True)
+            )
+        else:
+            # Original decoder for early features
+            self.fc = nn.Linear(latent_dim, hidden_ch * 14 * 14)
+            self.deconv_blocks = nn.Sequential(
+                nn.ConvTranspose2d(hidden_ch, 256, 4, stride=2, padding=1),
+                nn.BatchNorm2d(256), nn.ReLU(True),
+                nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1),
+                nn.BatchNorm2d(128), nn.ReLU(True),
+                nn.ConvTranspose2d(128, out_ch, 4, stride=2, padding=1),
+                nn.Sigmoid()
+            )
 
     def forward(self, z):
-        x = self.fc(z).view(z.size(0), self.hidden_ch, 14, 14)
-        return self.deconv_blocks(x)
+        if self.is_late_features:
+            # Directly reshape to the correct output size (7x7)
+            x = self.fc(z).view(z.size(0), self.hidden_ch, 7, 7)
+            x = self.out_layer(x)
+            return x
+        else:
+            x = self.fc(z).view(z.size(0), self.hidden_ch, 14, 14)
+            return self.deconv_blocks(x)
 
 class VEncoder(nn.Module):
 
@@ -128,6 +166,7 @@ class VAE(nn.Module):
     def kl_divergence(self) -> torch.Tensor:
         return -0.5 * torch.mean(1 + self.logvar - self.mu.pow(2) - torch.exp(self.logvar))
 
+
 class VAELoss(nn.Module):
 
     def __init__(self, beta: float = 1.0):
@@ -141,6 +180,11 @@ class VAELoss(nn.Module):
                 recon_x: torch.Tensor,
                 x: torch.Tensor
                 ) -> torch.Tensor:
+
+        # Make sure the shapes match exactly
+        if recon_x.shape != x.shape:
+            # Resize the reconstructed output to match the target size
+            recon_x = nn.functional.adaptive_avg_pool2d(recon_x, (x.size(2), x.size(3)))
 
         recon_loss = self.recon_crit(recon_x, x)
         kld_loss = -0.5 * torch.mean(1 + model.logvar - model.mu.pow(2) - torch.exp(model.logvar))

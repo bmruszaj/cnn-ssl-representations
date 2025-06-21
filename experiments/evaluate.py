@@ -51,7 +51,53 @@ def evaluate(model_type: str) -> None:
     with torch.no_grad():
         for images, labels in test_loader:
             images, labels = images.to(device), labels.to(device)
-            preds = model(images).argmax(1)
+
+            # Custom forward pass for AE and VAE models to match training behavior
+            if model_type in ["ae", "vae", "vae_pretrained"]:
+                # Process initial layers
+                x = model.conv1(images)
+                x = model.bn1(x)
+                x = model.relu(x)
+
+                if model_type == "ae":
+                    # For AE, apply it to early features (after first conv)
+                    # This matches what was done in train_ae_on_pooling.py
+
+                    # Temporarily set to train mode to get consistent return values
+                    model.avgpool.train()
+                    recon_feats, _ = model.avgpool(x)
+                    model.avgpool.eval()
+
+                    # Continue through rest of the network with reconstructed features
+                    x = recon_feats
+                    x = model.maxpool(x)
+                    x = model.layer1(x)
+                    x = model.layer2(x)
+                    x = model.layer3(x)
+                    x = model.layer4(x)
+                    x = torch.nn.functional.adaptive_avg_pool2d(x, (1, 1))
+                else:
+                    # For VAE, process through network until layer4, then apply VAE
+                    x = model.maxpool(x)
+                    x = model.layer1(x)
+                    x = model.layer2(x)
+                    x = model.layer3(x)
+                    x = model.layer4(x)
+
+                    # Apply VAE to late features
+                    x = model.avgpool(x)
+
+                    # Apply adaptive pooling
+                    x = torch.nn.functional.adaptive_avg_pool2d(x, (1, 1))
+
+                # Flatten and pass through FC
+                x = torch.flatten(x, 1)
+                logits = model.fc(x)
+            else:
+                # Standard forward pass for baseline and other models
+                logits = model(images)
+
+            preds = logits.argmax(1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
 
