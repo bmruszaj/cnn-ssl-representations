@@ -1,6 +1,6 @@
 stages:
   prepare_split:
-    cmd: PYTHONPATH=./ python3 src/data/prepare_split.py
+    cmd: python -m src.data.prepare_split
     deps:
       - src/data/prepare_split.py
     outs:
@@ -11,7 +11,7 @@ stages:
       - split.test_percent
 
   train_baseline:
-    cmd: PYTHONPATH=./ python3 experiments/train_baseline.py
+    cmd: python -m experiments.train_baseline
     deps:
       - experiments/train_baseline.py
       - data/cifar_split.npz
@@ -24,49 +24,60 @@ stages:
       - model.latent_channels
       - model.pretrained
 
-#  train_ae:
-#    cmd: python src/train/train_ae.py
-#    deps:
-#      - src/train/train_ae.py
-#      - data/cifar/cifar_split.npz
-#    outs:
-#      - checkpoints/ae_model.pt
-#    params:
-#      - ae.train.epochs
-#      - ae.train.learning_rate
-#      - ae.freeze
-#      - model.latent_channels
-#      - model.num_classes
+  pretrain_ae:
+    cmd: python -m pretrain.ae_pretrain
+    deps:
+      - pretrain/ae_pretrain.py
+      - src/models/ae.py
+      - data/cifar_split.npz
+    outs:
+      - checkpoints/ae_pretrained.pth
+    params:
+      - ae.pretrain.epochs
+      - ae.pretrain.learning_rate
+      - ae.recon_loss_weight
+      - ae.freeze
+      - model.latent_channels
 
+  train_ae:
+    cmd: python -m experiments.train_ae_on_pooling
+    deps:
+      - experiments/train_ae_on_pooling.py
+      - src/models/ae.py
+      - checkpoints/ae_pretrained.pth
+      - data/cifar_split.npz
+    outs:
+      - checkpoints/ae_model.pt
+    params:
+      - ae.train.epochs
+      - ae.train.learning_rate
+      - ae.recon_loss_weight
+      - ae.freeze
+      - ae.train.cls_loss_weight
+      - model.latent_channels
+      - model.num_classes
 
   pretrain_vae:
-    cmd: PYTHONPATH=./ python3 pretrain/vae_pretrain.py && PYTHONPATH=./ python3 experiments/train_vae_on_pooling.py --pretrained
+    cmd: python -m pretrain.vae_pretrain
     deps:
       - pretrain/vae_pretrain.py
       - src/models/vae.py
       - data/cifar_split.npz
     outs:
-      - pretrained/vae_pretrained.pth
-      - checkpoints/vae_pretrained_model.pt
+      - checkpoints/vae_pretrained.pth
     params:
       - vae.pretrain.epochs
       - vae.pretrain.learning_rate
-      - vae.train.epochs
-      - vae.train.learning_rate
-      - vae.train.weight_decay
-      - vae.train.cls_loss_weight
-      - vae.latent_ch
       - vae.hidden_ch
-      - vae.freeze
+      - vae.latent_ch
       - vae.beta
-      - model.latent_channels
-      - model.num_classes
 
   train_vae:
-    cmd: PYTHONPATH=./ python3 experiments/train_vae_on_pooling.py
+    cmd: python -m experiments.train_vae_on_pooling
     deps:
       - experiments/train_vae_on_pooling.py
       - src/models/vae.py
+      - checkpoints/vae_pretrained.pth
       - data/cifar_split.npz
     outs:
       - checkpoints/vae_model.pt
@@ -75,51 +86,20 @@ stages:
       - vae.train.learning_rate
       - vae.train.weight_decay
       - vae.train.cls_loss_weight
-      - vae.latent_ch
       - vae.hidden_ch
-      - vae.freeze
+      - vae.latent_ch
       - vae.beta
-      - model.latent_channels
-      - model.num_classes
-
-  # train_simclr:
-  #   cmd: python src/train/train_simclr.py
-  #   deps:
-  #     - src/train/train_simclr.py
-  #     - data/cifar/cifar_split.npz
-  #   outs:
-  #     - checkpoints/simclr_model.pt
-  #   params:
-  #     - simclr.train.epochs
-  #     - simclr.train.learning_rate
-  #     - simclr.freeze
-  #     - model.latent_channels
-  #     - model.num_classes
-
-  # train_byol:
-  #   cmd: python src/train/train_byol.py
-  #   deps:
-  #     - src/train/train_byol.py
-  #     - data/cifar/cifar_split.npz
-  #   outs:
-  #     - checkpoints/byol_model.pt
-  #   params:
-  #     - byol.train.epochs
-  #     - byol.train.learning_rate
-  #     - byol.freeze
-  #     - model.latent_channels
-  #     - model.num_classes
 
   evaluate:
     foreach:
       - baseline
-#      - ae
+      - ae
       - vae
-      - vae_pretrained
+#      - vae_pretrained
       # - simclr
       # - byol
     do:
-      cmd: PYTHONPATH=./ python3 experiments/evaluate.py --model_type ${item}
+      cmd: python -m experiments.evaluate --model_type ${item}
       deps:
         - experiments/evaluate.py
         - checkpoints/${item}_model.pt

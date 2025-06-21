@@ -2,7 +2,7 @@ seed: 50
 
 split:
   train_percent: 1    # % of CIFAR-10 train set to use
-  test_percent: 0.1    # % of CIFAR-10 test set to use
+  test_percent: 0.1   # % of CIFAR-10 test set to use
 
 model:
   latent_channels: 128
@@ -17,10 +17,14 @@ baseline:
 ae:
   freeze: false
   recon_loss_weight: 0.5
+  pretrain:
+    epochs: 1            # AE pretraining epochs
+    learning_rate: 0.001 # AE pretraining LR
   train:
     epochs: 5
     batch_size: 32
     learning_rate: 0.001
+    cls_loss_weight: 1.0
 
 vae:
   beta: 10.0
@@ -58,4 +62,3 @@ paths:
   data_dir: "data"
   results_dir: "results"
   checkpoints_dir: "checkpoints"
-  pretrain_dir: "pretrained"
