@@ -105,7 +105,8 @@ stages:
         - checkpoints/${item}_model.pt
         - data/cifar_split.npz
       outs:
-        - results/${item}_acc.json
+        - results/${item}_acc.json:
+            cache: false
       params:
         - model.latent_channels
         - model.num_classes

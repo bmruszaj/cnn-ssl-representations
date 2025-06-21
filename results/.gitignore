@@ -1,0 +1,4 @@
+# This .gitignore file is intentionally empty
+# It ensures that git tracks the files in this directory
+# even if DVC tries to ignore them
+!*.json

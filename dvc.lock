@@ -10,27 +10,27 @@ stages:
     params:
       params.yaml:
         seed: 50
-        split.test_percent: 0.1
-        split.train_percent: 1
+        split.test_percent: 1
+        split.train_percent: 5
     outs:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
   train_baseline:
     cmd: python -m experiments.train_baseline
     deps:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/train_baseline.py
       hash: md5
       md5: 96b61863992d706a95efd46a23f94016
       size: 1890
     params:
       params.yaml:
-        baseline.train.epochs: 1
+        baseline.train.epochs: 10
         baseline.train.learning_rate: 0.001
         model.latent_channels: 128
         model.num_classes: 10
@@ -38,23 +38,23 @@ stages:
     outs:
     - path: checkpoints/baseline_model.pt
       hash: md5
-      md5: 4c6bfc4782d593f5fc4962b3e96dca58
+      md5: dd4f10a6af3e3edd9f35b811fa1332e8
       size: 44806256
   evaluate@baseline:
     cmd: python -m experiments.evaluate --model_type baseline
     deps:
     - path: checkpoints/baseline_model.pt
       hash: md5
-      md5: 4c6bfc4782d593f5fc4962b3e96dca58
+      md5: dd4f10a6af3e3edd9f35b811fa1332e8
       size: 44806256
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/evaluate.py
       hash: md5
-      md5: f401a771262abe7d5a9360a0f9a5d0be
-      size: 2647
+      md5: 7ed1fa35c74cfad9cae1e8530686c9a8
+      size: 4564
     params:
       params.yaml:
         model.latent_channels: 128
@@ -62,19 +62,19 @@ stages:
     outs:
     - path: results/baseline_acc.json
       hash: md5
-      md5: b44445a87c92204e86c8f6957e387911
+      md5: a1331e3950f4ee02b83e259019ddffd8
       size: 24
   pretrain_ae:
     cmd: python -m pretrain.ae_pretrain
     deps:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: pretrain/ae_pretrain.py
       hash: md5
-      md5: 92a647d17a664da67f92edb47ff3e21a
-      size: 2223
+      md5: b72f450b9545e610ecf1158cf7cd9cc1
+      size: 2176
     - path: src/models/ae.py
       hash: md5
       md5: 1419033b6ce4f8f48ad451226352c5da
@@ -82,30 +82,30 @@ stages:
     params:
       params.yaml:
         ae.freeze: false
-        ae.pretrain.epochs: 1
+        ae.pretrain.epochs: 10
         ae.pretrain.learning_rate: 0.001
         ae.recon_loss_weight: 0.5
         model.latent_channels: 128
     outs:
     - path: checkpoints/ae_pretrained.pth
       hash: md5
-      md5: d88defd825e246355bf251f1041429c9
+      md5: 11ad48c6d15d051581042d3ed36acff1
       size: 599064
   train_ae:
     cmd: python -m experiments.train_ae_on_pooling
     deps:
     - path: checkpoints/ae_pretrained.pth
       hash: md5
-      md5: d88defd825e246355bf251f1041429c9
+      md5: 11ad48c6d15d051581042d3ed36acff1
       size: 599064
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/train_ae_on_pooling.py
       hash: md5
-      md5: 409285bb64ab8d867ba3eb70fe67e882
-      size: 3095
+      md5: 4f855e27f8aad3ceb6948cdee7f813d3
+      size: 3129
     - path: src/models/ae.py
       hash: md5
       md5: 1419033b6ce4f8f48ad451226352c5da
@@ -115,90 +115,90 @@ stages:
         ae.freeze: false
         ae.recon_loss_weight: 0.5
         ae.train.cls_loss_weight: 1.0
-        ae.train.epochs: 5
+        ae.train.epochs: 10
         ae.train.learning_rate: 0.001
         model.latent_channels: 128
         model.num_classes: 10
     outs:
     - path: checkpoints/ae_model.pt
       hash: md5
-      md5: c92fb7fbf8c4a6654ee24f2f2e10fe54
+      md5: c93814af47201dc1a51d5d172bc64dea
       size: 45404142
   pretrain_vae:
     cmd: python -m pretrain.vae_pretrain
     deps:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: pretrain/vae_pretrain.py
       hash: md5
-      md5: 168ede8e56aa12d86b151ae90103e2d6
-      size: 2300
+      md5: 1c78c2dc38cfc4d67428ecd41115ef9a
+      size: 2667
     - path: src/models/vae.py
       hash: md5
-      md5: b4fce020c311b401e8aa443107f67c09
-      size: 4500
+      md5: 61d38fd4eb06e8d75bb4f38257219f97
+      size: 9981
     params:
       params.yaml:
         vae.beta: 10.0
         vae.hidden_ch: 256
         vae.latent_ch: 128
-        vae.pretrain.epochs: 1
+        vae.pretrain.epochs: 10
         vae.pretrain.learning_rate: 0.0001
     outs:
     - path: checkpoints/vae_pretrained.pth
       hash: md5
-      md5: daace9b61abee8f3822f3a44def76561
-      size: 90939550
+      md5: 46c82b8f57bd0186419b0045db1c68b3
+      size: 22062374
   train_vae:
     cmd: python -m experiments.train_vae_on_pooling
     deps:
     - path: checkpoints/vae_pretrained.pth
       hash: md5
-      md5: daace9b61abee8f3822f3a44def76561
-      size: 90939550
+      md5: 46c82b8f57bd0186419b0045db1c68b3
+      size: 22062374
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/train_vae_on_pooling.py
       hash: md5
-      md5: 263a39343e6fa3176020ff9daac95a1a
-      size: 2894
+      md5: a2935edf4e424128203ed91c53cb3e47
+      size: 3365
     - path: src/models/vae.py
       hash: md5
-      md5: b4fce020c311b401e8aa443107f67c09
-      size: 4500
+      md5: 61d38fd4eb06e8d75bb4f38257219f97
+      size: 9981
     params:
       params.yaml:
         vae.beta: 10.0
         vae.hidden_ch: 256
         vae.latent_ch: 128
         vae.train.cls_loss_weight: 5
-        vae.train.epochs: 1
+        vae.train.epochs: 10
         vae.train.learning_rate: 0.0001
         vae.train.weight_decay: 1e-06
     outs:
     - path: checkpoints/vae_model.pt
       hash: md5
-      md5: 35441fd316a4369d0b216ed5f465d48d
-      size: 135745274
+      md5: 4c4c8f99fa4b26b322599ea52fdda2f5
+      size: 66867962
   evaluate@vae:
     cmd: python -m experiments.evaluate --model_type vae
     deps:
     - path: checkpoints/vae_model.pt
       hash: md5
-      md5: 35441fd316a4369d0b216ed5f465d48d
-      size: 135745274
+      md5: 4c4c8f99fa4b26b322599ea52fdda2f5
+      size: 66867962
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/evaluate.py
       hash: md5
-      md5: f401a771262abe7d5a9360a0f9a5d0be
-      size: 2647
+      md5: 7ed1fa35c74cfad9cae1e8530686c9a8
+      size: 4564
     params:
       params.yaml:
         model.latent_channels: 128
@@ -206,23 +206,23 @@ stages:
     outs:
     - path: results/vae_acc.json
       hash: md5
-      md5: a3f53cf1b6ee59d041a6610205aa33e3
-      size: 23
+      md5: df949ca8f696e10709febabad6e33673
+      size: 24
   evaluate@ae:
     cmd: python -m experiments.evaluate --model_type ae
     deps:
     - path: checkpoints/ae_model.pt
       hash: md5
-      md5: c92fb7fbf8c4a6654ee24f2f2e10fe54
+      md5: c93814af47201dc1a51d5d172bc64dea
       size: 45404142
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: ecb5fbb795ca1bd175c91a0f3593e49f
+      size: 10920
     - path: experiments/evaluate.py
       hash: md5
-      md5: f401a771262abe7d5a9360a0f9a5d0be
-      size: 2647
+      md5: 7ed1fa35c74cfad9cae1e8530686c9a8
+      size: 4564
     params:
       params.yaml:
         model.latent_channels: 128
@@ -230,5 +230,5 @@ stages:
     outs:
     - path: results/ae_acc.json
       hash: md5
-      md5: 08a98ba303598134b67070a43bd6be13
+      md5: 03846d9e2cba6018421dbb18fab1fefd
       size: 24

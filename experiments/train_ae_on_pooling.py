@@ -29,14 +29,14 @@ def train_ae():
         num_classes=params['model']['num_classes'],
     ).to(device)
 
-    # Freeze everything but maxpool (AE) and fc
+    # Freeze everything but avgpool (AE) and fc
     for name, p in model.named_parameters():
-        if not (name.startswith('maxpool') or name.startswith('fc')):
+        if not (name.startswith('avgpool') or name.startswith('fc')):
             p.requires_grad = False
 
     optimizer = optim.AdamW(
         [
-            {"params": model.maxpool.parameters()},
+            {"params": model.avgpool.parameters()},
             {"params": model.fc.parameters()}
         ],
         lr=params['ae']['train']['learning_rate'],
@@ -58,7 +58,7 @@ def train_ae():
             feats = model.relu(model.bn1(model.conv1(images)))
 
             # 2) AE forward: get reconstructed features (and z, which we ignore here)
-            recon_feats, _ = model.maxpool(feats)
+            recon_feats, _ = model.avgpool(feats)
 
             # 3) classification head—run recon through the rest of ResNet:
             x = recon_feats
@@ -66,7 +66,7 @@ def train_ae():
             x = model.layer2(x)
             x = model.layer3(x)
             x = model.layer4(x)
-            x = model.avgpool(x)
+            x = torch.nn.functional.adaptive_avg_pool2d(x, (1, 1))
             x = torch.flatten(x, 1)
             logits = model.fc(x)
 
