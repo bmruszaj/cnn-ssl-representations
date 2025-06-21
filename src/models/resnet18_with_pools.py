@@ -12,10 +12,16 @@ The SimCLR / BYOL blocks below are *stubs* so that teammates can later
 fill in real implementations without touching the builder signature.
 """
 
-from typing import Literal
+from typing import Literal, Dict, Any
+import torch
 import torch.nn as nn
 from torchvision.models import resnet18, ResNet18_Weights
+from src.models.vae import VAE
+from src.utils.params_yaml import load_yaml
+from pathlib import Path
 
+PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+cfg: Dict[str, Any] = load_yaml()
 
 class Autoencoder(nn.Module):
     "Stub that mimics pooling semantics for Autoencoder experiments."
@@ -73,6 +79,7 @@ def build_resnet18(
     freeze_pool: bool = False,
     latent: int = 128,
     num_classes: int = 10,
+    pretrained_pooling_block: bool = False,
 ) -> nn.Module:
     """Return a ResNet‑18 variant with a chosen pooling/projection block.
 
@@ -96,8 +103,22 @@ def build_resnet18(
         in_ch = model.conv1.out_channels
         if pool_type == "ae":
             block: nn.Module = Autoencoder(in_ch, latent)
-        elif pool_type == "vae":
-            block = VariationalAutoencoder(in_ch, latent)
+        elif pool_type == "vae" or pool_type == "vae_pretrained":
+
+            block: nn.Module = VAE(in_ch,
+                                    cfg['vae']['hidden_ch'],
+                                    cfg['vae']['latent_ch'],
+                                    cfg['vae']['beta']
+            )
+
+            if pretrained_pooling_block:
+                path = PROJECT_ROOT / cfg['paths']["pretrain_dir"] / "vae_pretrained.pth"
+
+                if path.exists():
+                    block.load_state_dict(torch.load(path, map_location="cpu"))
+                else:
+                    raise FileNotFoundError()
+
         elif pool_type == "simclr":
             block = SimCLRPool(in_ch)
         elif pool_type == "byol":

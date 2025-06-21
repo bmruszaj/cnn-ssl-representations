@@ -1,6 +1,6 @@
 stages:
   prepare_split:
-    cmd: python src/data/prepare_split.py
+    cmd: PYTHONPATH=./ python3 src/data/prepare_split.py
     deps:
       - src/data/prepare_split.py
     outs:
@@ -11,7 +11,7 @@ stages:
       - split.test_percent
 
   train_baseline:
-    cmd: python experiments/train_baseline.py
+    cmd: PYTHONPATH=./ python3 experiments/train_baseline.py
     deps:
       - experiments/train_baseline.py
       - data/cifar_split.npz
@@ -37,21 +37,50 @@ stages:
 #      - ae.freeze
 #      - model.latent_channels
 #      - model.num_classes
-#
-#  train_vae:
-#    cmd: python src/train/train_vae.py
-#    deps:
-#      - src/train/train_vae.py
-#      - data/cifar/cifar_split.npz
-#    outs:
-#      - checkpoints/vae_model.pt
-#    params:
-#      - vae.train.epochs
-#      - vae.train.learning_rate
-#      - vae.freeze
-#      - vae.beta
-#      - model.latent_channels
-#      - model.num_classes
+
+
+  pretrain_vae:
+    cmd: PYTHONPATH=./ python3 pretrain/vae_pretrain.py && PYTHONPATH=./ python3 experiments/train_vae_on_pooling.py --pretrained
+    deps:
+      - pretrain/vae_pretrain.py
+      - src/models/vae.py
+      - data/cifar_split.npz
+    outs:
+      - pretrained/vae_pretrained.pth
+      - checkpoints/vae_pretrained_model.pt
+    params:
+      - vae.pretrain.epochs
+      - vae.pretrain.learning_rate
+      - vae.train.epochs
+      - vae.train.learning_rate
+      - vae.train.weight_decay
+      - vae.train.cls_loss_weight
+      - vae.latent_ch
+      - vae.hidden_ch
+      - vae.freeze
+      - vae.beta
+      - model.latent_channels
+      - model.num_classes
+
+  train_vae:
+    cmd: PYTHONPATH=./ python3 experiments/train_vae_on_pooling.py
+    deps:
+      - experiments/train_vae_on_pooling.py
+      - src/models/vae.py
+      - data/cifar_split.npz
+    outs:
+      - checkpoints/vae_model.pt
+    params:
+      - vae.train.epochs
+      - vae.train.learning_rate
+      - vae.train.weight_decay
+      - vae.train.cls_loss_weight
+      - vae.latent_ch
+      - vae.hidden_ch
+      - vae.freeze
+      - vae.beta
+      - model.latent_channels
+      - model.num_classes
 
   # train_simclr:
   #   cmd: python src/train/train_simclr.py
@@ -85,11 +114,12 @@ stages:
     foreach:
       - baseline
 #      - ae
-#      - vae
+      - vae
+      - vae_pretrained
       # - simclr
       # - byol
     do:
-      cmd: python experiments/evaluate.py --model_type ${item}
+      cmd: PYTHONPATH=./ python3 experiments/evaluate.py --model_type ${item}
       deps:
         - experiments/evaluate.py
         - checkpoints/${item}_model.pt
