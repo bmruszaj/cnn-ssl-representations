@@ -1,4 +1,5 @@
 stages:
+  # ---------------------------------------------------------------------
   prepare_split:
     cmd: python -m src.data.prepare_split
     deps:
@@ -10,6 +11,7 @@ stages:
       - split.train_percent
       - split.test_percent
 
+  # ---------------------------------------------------------------------
   train_baseline:
     cmd: python -m experiments.train_baseline
     deps:
@@ -24,80 +26,68 @@ stages:
       - model.latent_channels
       - model.pretrained
 
-  pretrain_ae:
-    cmd: python -m pretrain.ae_pretrain
-    deps:
-      - pretrain/ae_pretrain.py
-      - src/models/ae.py
-      - data/cifar_split.npz
-    outs:
-      - checkpoints/ae_pretrained.pth
-    params:
-      - ae.pretrain.epochs
-      - ae.pretrain.learning_rate
-      - ae.recon_loss_weight
-      - ae.freeze
-      - model.latent_channels
+  # ---------------------------------------------------------------------
+  # Unified pool-block pre-training (AE or VAE)
+  pretrain_pool:
+    foreach:
+      - ae
+      - vae
+    do:
+      cmd: >-
+        python -m pretrain.pretrain_pool_encoder
+        --pool_type ${item}
+      deps:
+        - pretrain/pretrain_pool_encoder.py
+        - src/models/ae.py
+        - src/models/vae.py
+        - data/cifar_split.npz
+      outs:
+        - checkpoints/${item}_pretrained.pth
+      params:
+        - ${item}.pretrain.epochs
+        - ${item}.pretrain.learning_rate
+        - model.latent_channels
+        - model.pretrained
+        # item-specific extras (ignored when not present)
+        - ae.recon_loss_weight
+        - vae.hidden_ch
+        - vae.latent_ch
+        - vae.beta
 
-  train_ae:
-    cmd: python -m experiments.train_ae_on_pooling
-    deps:
-      - experiments/train_ae_on_pooling.py
-      - src/models/ae.py
-      - checkpoints/ae_pretrained.pth
-      - data/cifar_split.npz
-    outs:
-      - checkpoints/ae_model.pt
-    params:
-      - ae.train.epochs
-      - ae.train.learning_rate
-      - ae.recon_loss_weight
-      - ae.freeze
-      - ae.train.cls_loss_weight
-      - model.latent_channels
-      - model.num_classes
+  # ---------------------------------------------------------------------
+  # Classifier training on top of the pretrained pool block
+  train_with_pool:
+    foreach:
+      - { name: ae_frozen,   pool: ae,  freeze: true  }
+      - { name: ae_unfrozen, pool: ae,  freeze: false }
+      - { name: vae_frozen,  pool: vae, freeze: true  }
+      - { name: vae_unfrozen,pool: vae, freeze: false }
+    do:
+      cmd: >-
+        python -m experiments.train_resnet_with_pool
+        --pool_type ${item.pool}
+        --freeze_encoder ${item.freeze}
+      deps:
+        - experiments/train_resnet_with_pool.py
+        - data/cifar_split.npz
+        - checkpoints/${item.pool}_pretrained.pth
+      outs:
+        - checkpoints/${item.name}_model.pt
+      params:
+        - ${item.pool}.train.epochs
+        - ${item.pool}.train.learning_rate
+        - model.latent_channels
+        - model.num_classes
+        - model.pretrained
 
-  pretrain_vae:
-    cmd: python -m pretrain.vae_pretrain
-    deps:
-      - pretrain/vae_pretrain.py
-      - src/models/vae.py
-      - data/cifar_split.npz
-    outs:
-      - checkpoints/vae_pretrained.pth
-    params:
-      - vae.pretrain.epochs
-      - vae.pretrain.learning_rate
-      - vae.hidden_ch
-      - vae.latent_ch
-      - vae.beta
-
-  train_vae:
-    cmd: python -m experiments.train_vae_on_pooling
-    deps:
-      - experiments/train_vae_on_pooling.py
-      - src/models/vae.py
-      - checkpoints/vae_pretrained.pth
-      - data/cifar_split.npz
-    outs:
-      - checkpoints/vae_model.pt
-    params:
-      - vae.train.epochs
-      - vae.train.learning_rate
-      - vae.train.weight_decay
-      - vae.train.cls_loss_weight
-      - vae.hidden_ch
-      - vae.latent_ch
-      - vae.beta
-
+  # ---------------------------------------------------------------------
   evaluate:
     foreach:
       - baseline
-      - ae
-      - vae
-#      - vae_pretrained
-      # - simclr
-      # - byol
+      - ae_frozen
+      - ae_unfrozen
+      - vae_frozen
+      - vae_unfrozen
     do:
       cmd: python -m experiments.evaluate --model_type ${item}
       deps:

@@ -1,102 +1,139 @@
-# resnet18_with_pools.py
-"""Build ResNet‑18 with a pluggable replacement for the first MaxPool2d layer.
-
-Supported `pool_type` values:
-    "max"   – leave the original MaxPool2d
-    "ae"    – deterministic Autoencoder block (AEPool)
-    "ae_pretrained" – AE block with pretrained weights
-    "vae"   – Variational‑AE block  (VAEPool)
-    "vae_pretrained" – VAE block with pretrained weights
-    "simclr"– placeholder for a SimCLR projection/encoder block
-    "byol"  – placeholder for a BYOL projection/encoder block
-"""
-
-from typing import Literal, Dict, Any
-import torch
-import torch.nn as nn
-from torchvision.models import resnet18, ResNet18_Weights
-from src.models.vae import VAE
-from src.models.ae import Autoencoder as AE
-from src.utils.params_yaml import load_yaml
+from __future__ import annotations
+from typing import Literal, Dict, Any, Optional
 from pathlib import Path
+import torch, torch.nn as nn
+from torchvision.models import resnet18, ResNet18_Weights
+from src.utils.params_yaml import load_yaml
+from src.models.ae import Autoencoder as AE
+from src.models.vae import VAE
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 cfg: Dict[str, Any] = load_yaml()
 
-
-def _freeze(module: nn.Module) -> None:
-    for p in module.parameters():
+# --------------------------------------------------------------------------- helpers
+def _freeze(m: nn.Module):                                    # freeze util
+    for p in m.parameters():
         p.requires_grad_(False)
 
+class _VAEEncoder(nn.Module):
+    """Wrap VAE to output reparameterized latent tensor of shape [B, latent, H, W]"""
+    def __init__(self, vae: VAE):
+        super().__init__()
+        self.vae = vae
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mu, logvar = self.vae.encoder(x)
+        return self.vae.reparameterize(mu, logvar)
 
-def build_resnet18(
-    *,
-    pretrained: bool,
-    pool_type: Literal["max", "ae", "ae_pretrained", "vae", "vae_pretrained", "simclr", "byol"] = "max",
-    freeze_pool: bool = False,
-    latent: int = 128,
-    num_classes: int = 10,
-    pretrained_pooling_block: bool = False,
-) -> nn.Module:
-    """Return a ResNet‑18 variant with a chosen pooling/projection block."""
-    weights = ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
-    model = resnet18(weights=weights)
+# --------------------------------------------------------------------------- backbone-encoder-head
+class ResNetWithEncoder(nn.Module):
+    def __init__(self,
+                 backbone: nn.Module,
+                 encoder : nn.Module,
+                 latent_dim: int,
+                 num_classes: int,
+                 freeze_encoder: bool = False):
+        super().__init__()
+        self.features = nn.Sequential(*list(backbone.children())[:-2])  # conv→layer4
+        # set encoder (pooling block)
+        self.encoder  = encoder
+        self.maxpool  = encoder  # alias for backward compatibility
+        if freeze_encoder:
+            _freeze(self.encoder)
+        # classifier head
+        self.classifier = nn.Linear(latent_dim, num_classes)
+        self.fc = self.classifier  # alias for training scripts
 
-    if pool_type != "max":
-        in_ch = model.conv1.out_channels
+    def _get_latent(self, enc_out):
+        """AE returns (recon, z), VAE returns z directly."""
+        if isinstance(enc_out, tuple):
+            return enc_out[-1]                                # take last element
+        return enc_out
 
-        if pool_type in ("ae", "ae_pretrained"):
-            block: nn.Module = AE(in_ch, latent)
-            if pool_type == "ae_pretrained" or pretrained_pooling_block:
-                path = PROJECT_ROOT / cfg['paths']["pretrain_dir"] / "ae_pretrained.pth"
-                if path.exists():
-                    block.load_state_dict(torch.load(path, map_location="cpu"))
-                else:
-                    raise FileNotFoundError(f"Pretrained AE not found at {path!r}")
+    def forward(self, x: torch.Tensor):                       # type: ignore[override]
+        x = self.features(x)                                  # (B,512,7,7)
+        z = self._get_latent(self.encoder(x))                 # (B,latent_dim) or 4-D
+        z = torch.flatten(z, 1)                               # ensure 2-D
+        return self.classifier(z)
 
-        elif pool_type in ("vae", "vae_pretrained"):
-            block = VAE(
-                in_ch,
-                cfg['vae']['hidden_ch'],
-                cfg['vae']['latent_ch'],
-                cfg['vae']['beta']
-            )
-            if pool_type == "vae_pretrained" or pretrained_pooling_block:
-                path = PROJECT_ROOT / cfg['paths']["pretrain_dir"] / "vae_pretrained.pth"
-                if path.exists():
-                    block.load_state_dict(torch.load(path, map_location="cpu"))
-                else:
-                    raise FileNotFoundError(f"Pretrained VAE not found at {path!r}")
+# --------------------------------------------------------------------------- factory
+EncoderType = Literal["ae", "vae"]
 
-        # other stubs
-        elif pool_type == "simclr":
-            from src.models.resnet18_with_pools import SimCLRPool
-            block = SimCLRPool(in_ch)
-        elif pool_type == "byol":
-            from src.models.resnet18_with_pools import BYOLPool
-            block = BYOLPool(in_ch)
-        else:
-            raise ValueError(f"Unsupported pool_type: {pool_type!r}")
+def _build_encoder(enc_type: EncoderType,
+                   flat_dim: int,
+                   latent: int,
+                   pretrained: bool) -> nn.Module:
 
-        model.maxpool = block
-        if freeze_pool:
-            _freeze(block)
+    if enc_type == "ae":
+        ae = AE(in_channels=512, latent_channels=latent)
+        if pretrained:
+            ae.load_state_dict(torch.load(
+                PROJECT_ROOT / cfg["paths"]["checkpoints_dir"] / "ae_pretrained.pth",
+                map_location="cpu"), strict=False)
+        return ae.encoder                                       # conv encoder
 
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    if enc_type == "vae":
+        vae = VAE(in_ch=flat_dim,
+                  hidden_ch=cfg["vae"]["hidden_ch"],
+                  latent_dim=latent,
+                  beta=cfg["vae"]["beta"])
+        if pretrained:
+            vae.load_state_dict(torch.load(
+                PROJECT_ROOT / cfg["paths"]["checkpoints_dir"] / "vae_pretrained.pth",
+                map_location="cpu"), strict=False)
+        return _VAEEncoder(vae)
+
+    raise ValueError(f"Unsupported encoder: {enc_type}")
+
+# --------------------------------------------------------------------------- public builder
+def build_resnet18(*,
+                   # backbone pretraining
+                   pretrained_backbone: bool = True,
+                   pretrained: bool | None = None,
+                   # pooling encoder type
+                   encoder_type: EncoderType = "ae",
+                   pool_type: EncoderType | None = None,
+                   custom_encoder: Optional[nn.Module] = None,
+                   # freezing options
+                   freeze_encoder: bool = False,
+                   freeze_pool: bool | None = None,
+                   # latent dim
+                   latent_dim: int = 128,
+                   latent: int | None = None,
+                   # classifier
+                   num_classes: int = 10,
+                   # pretrained pool encoder
+                   pretrained_encoder: bool = False,
+                   pretrained_pooling_block: bool | None = None
+                   ) -> ResNetWithEncoder:
+    # map alias arguments
+    if pretrained is not None:
+        pretrained_backbone = pretrained
+    if pool_type is not None:
+        encoder_type = pool_type
+    if freeze_pool is not None:
+        freeze_encoder = freeze_pool
+    if latent is not None:
+        latent_dim = latent
+    if pretrained_pooling_block is not None:
+        pretrained_encoder = pretrained_pooling_block
+
+    # build backbone and extract feature-map dims
+    backbone = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1 if pretrained_backbone else None)
+    features = nn.Sequential(*list(backbone.children())[:-2])
+    # compute feature-map shape (B, C, H, W)
+    with torch.no_grad():
+        feat = features(torch.zeros(1, 3, 224, 224))
+    feat_ch, feat_h, feat_w = feat.shape[1], feat.shape[2], feat.shape[3]
+
+    # build encoder block
+    encoder = custom_encoder or _build_encoder(encoder_type, feat_ch,
+                                               latent_dim, pretrained_encoder)
+    # determine classifier input dim by dummy passing through features + encoder
+    with torch.no_grad():
+        dummy_feats = features(torch.zeros(1, 3, 224, 224))
+        enc_out = encoder(dummy_feats)
+        z_latent = enc_out[-1] if isinstance(enc_out, tuple) else enc_out
+        clf_dim = torch.flatten(z_latent, 1).shape[1]
+    model = ResNetWithEncoder(backbone, encoder, clf_dim,
+                              num_classes, freeze_encoder)
     return model
-
-
-# Stubs for other pools (placed below or imported as needed)
-class SimCLRPool(nn.Module):
-    def __init__(self, in_channels: int):
-        super().__init__()
-        self.proj = nn.Identity()
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.proj(x)
-
-class BYOLPool(nn.Module):
-    def __init__(self, in_channels: int):
-        super().__init__()
-        self.proj = nn.Identity()
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.proj(x)

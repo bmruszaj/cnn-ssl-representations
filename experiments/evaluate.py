@@ -1,4 +1,5 @@
-# experiments/eval_model.py
+#!/usr/bin/env python
+
 import argparse
 import json
 import torch
@@ -6,26 +7,22 @@ from pathlib import Path
 from typing import Dict, Any, Literal
 
 from src.utils.params_yaml import load_yaml
-from src.models.resnet18_with_pools import build_resnet18
 from src.data.loaders import get_loaders
 
+# ---------------------------------------------------------------------------- #
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 params: Dict[str, Any] = load_yaml()
-ALLOWED: tuple[Literal["baseline", "ae", "vae", "vae_pretrained", "simclr", "byol"], ...] = (
-    "baseline",
-    "ae",
-    "vae",
-    "vae_pretrained",
-    "simclr",
-    "byol",
+
+ALLOWED: tuple[Literal[
+    "baseline", "ae", "vae", "vae_pretrained", "simclr", "byol",
+    "ae_frozen", "ae_unfrozen", "vae_frozen", "vae_unfrozen"
+], ...] = (
+    "baseline", "ae", "vae", "vae_pretrained", "simclr", "byol",
+    "ae_frozen", "ae_unfrozen", "vae_frozen", "vae_unfrozen"
 )
 
 
-# ----------------------------------------------------------------------------- #
-# Funkcje                                                                        #
-# ----------------------------------------------------------------------------- #
 def evaluate(model_type: str) -> None:
-    """Załaduj checkpoint i policz accuracy dla wybranego wariantu."""
     if model_type not in ALLOWED:
         raise ValueError(f"model_type must be one of {ALLOWED}")
 
@@ -37,15 +34,19 @@ def evaluate(model_type: str) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _, test_loader = get_loaders()
 
-    model = build_resnet18(
-        pretrained=False,
-        pool_type=model_type if model_type != "baseline" else "max",
-        freeze_pool=False,
-        latent=params["model"]["latent_channels"],
-        num_classes=params["model"]["num_classes"],
-    )
-    model.load_state_dict(torch.load(ckpt_path, map_location=device))
-    model.to(device).eval()
+    if model_type == "baseline":
+        from torchvision.models import resnet18, ResNet18_Weights
+        model = resnet18(weights=ResNet18_Weights.DEFAULT)
+        model.fc = torch.nn.Linear(model.fc.in_features, params["model"]["num_classes"])
+        # load saved baseline weights
+        state = torch.load(ckpt_path, map_location=device)
+        model.load_state_dict(state)
+    else:
+        # Load full model object saved during training (allow pickled models)
+        model = torch.load(ckpt_path, map_location=device, weights_only=False)
+
+    model = model.to(device)
+    model.eval()
 
     correct = total = 0
     with torch.no_grad():
@@ -56,14 +57,14 @@ def evaluate(model_type: str) -> None:
             total += labels.size(0)
 
     acc = 100 * correct / total
-    print(f"Accuracy ({model_type}): {acc:.2f}%")
+    print(f"✅  Accuracy ({model_type}): {acc:.2f}%")
 
     with open(results_path, "w") as f:
         json.dump({"accuracy": acc}, f, indent=2)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate checkpoint.")
+    parser = argparse.ArgumentParser(description="Evaluate a saved model checkpoint.")
     parser.add_argument(
         "--model_type",
         required=True,
