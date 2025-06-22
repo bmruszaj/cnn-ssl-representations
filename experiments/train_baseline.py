@@ -52,7 +52,7 @@ def train_baseline():
             pbar.set_postfix({"loss": running_loss / (pbar.n + 1)})
 
     torch.save(model.state_dict(), ckpt_path)
-    print(f"✅ Model saved to {ckpt_path}")
+    print(f"Model saved to {ckpt_path}")
 
 
 if __name__ == "__main__":

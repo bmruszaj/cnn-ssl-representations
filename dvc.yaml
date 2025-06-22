@@ -1,7 +1,7 @@
 stages:
   # ---------------------------------------------------------------------
   prepare_split:
-    cmd: python -m src.data.prepare_split
+    cmd: ${interpreter} -m src.data.prepare_split
     deps:
       - src/data/prepare_split.py
     outs:
@@ -13,7 +13,7 @@ stages:
 
   # ---------------------------------------------------------------------
   train_baseline:
-    cmd: python -m experiments.train_baseline
+    cmd: ${interpreter} -m experiments.train_baseline
     deps:
       - experiments/train_baseline.py
       - data/cifar_split.npz
@@ -34,7 +34,7 @@ stages:
       - vae
     do:
       cmd: >-
-        python -m pretrain.pretrain_pool_encoder
+        ${interpreter} -m pretrain.pretrain_pool_encoder
         --pool_type ${item}
       deps:
         - pretrain/pretrain_pool_encoder.py
@@ -64,7 +64,7 @@ stages:
       - { name: vae_unfrozen,pool: vae, freeze: false }
     do:
       cmd: >-
-        python -m experiments.train_resnet_with_pool
+        ${interpreter} -m experiments.train_resnet_with_pool
         --pool_type ${item.pool}
         --freeze_encoder ${item.freeze}
       deps:
@@ -89,7 +89,7 @@ stages:
       - vae_frozen
       - vae_unfrozen
     do:
-      cmd: python -m experiments.evaluate --model_type ${item}
+      cmd: ${interpreter} -m experiments.evaluate --model_type ${item}
       deps:
         - experiments/evaluate.py
         - checkpoints/${item}_model.pt
@@ -99,3 +99,13 @@ stages:
       params:
         - model.latent_channels
         - model.num_classes
+
+  # ---------------------------------------------------------------------
+
+  summarize:
+    cmd: ${interpreter} -m experiments.summarize
+    deps:
+      - experiments/summarize.py
+      - experiments/evaluate.py
+    outs:
+      - results/plt/test_acc.png

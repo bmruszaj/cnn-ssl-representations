@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from __future__ import annotations
 
 import argparse
@@ -13,6 +12,8 @@ from tqdm import tqdm
 from src.data.loaders import get_loaders
 from src.utils.params_yaml import load_yaml
 from src.models.resnet18_with_pools import build_resnet18
+
+import matplotlib.pyplot as plt
 
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -32,6 +33,9 @@ def train(pool_type: str, freeze_encoder: bool) -> None:
     ckpt_dir = PROJECT_ROOT / params["paths"]["checkpoints_dir"]
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     save_path = ckpt_dir / f"{tag}_model.pt"
+
+    plt_dir = PROJECT_ROOT / params["paths"]["plots_dir"]
+    plt_dir.mkdir(parents=True, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, _ = get_loaders()
@@ -56,9 +60,16 @@ def train(pool_type: str, freeze_encoder: bool) -> None:
     criterion = nn.CrossEntropyLoss()
     epochs = params[pool_type]["train"]["epochs"]
 
+    train_losses = []
+    train_acc = []
+
     for epoch in range(1, epochs + 1):
         model.train()
-        running = 0.0
+
+        running_loss = 0.0
+        running_corrects = 0
+        total_samples = 0
+
         pbar = tqdm(train_loader, desc=f"[Train {tag}] Epoch {epoch}/{epochs}", leave=False)
         for images, labels in pbar:
             images, labels = images.to(device), labels.to(device)
@@ -69,11 +80,46 @@ def train(pool_type: str, freeze_encoder: bool) -> None:
             loss.backward()
             optimizer.step()
 
-            running += loss.item()
-            pbar.set_postfix(loss=running / (pbar.n + 1))
+            running_loss += loss.item()
+
+            preds = logits.argmax(dim=1)
+            running_corrects += (preds == labels).sum().item()
+            total_samples += labels.size(0)
+
+            avg_loss = running_loss / (pbar.n + 1)
+            pbar.set_postfix(loss=avg_loss)
+
+        epoch_loss = running_loss / len(train_loader)
+        epoch_acc = running_corrects / total_samples
+
+        train_losses.append(epoch_loss)
+        train_acc.append(epoch_acc)
 
     torch.save(model, save_path)
     print(f"Saved full model to {save_path}")
+
+
+    epochs_range = range(1, epochs + 1)
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(epochs_range, train_losses, marker='o')
+    plt.title(f'pool: {pool_type}, freeze: {freeze_encoder}')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(plt_dir / f'pool_{pool_type}_freeze_{freeze_encoder}_loss.png')
+    plt.close()
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(epochs_range, train_acc, marker='o')
+    plt.title('Training Accuracy')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(plt_dir / f'pool_{pool_type}_freeze_{freeze_encoder}_acc.png')
+    plt.close()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import json
 import torch
@@ -57,7 +55,7 @@ def evaluate(model_type: str) -> None:
             total += labels.size(0)
 
     acc = 100 * correct / total
-    print(f"✅  Accuracy ({model_type}): {acc:.2f}%")
+    print(f"Accuracy ({model_type}): {acc:.2f}%")
 
     with open(results_path, "w") as f:
         json.dump({"accuracy": acc}, f, indent=2)
