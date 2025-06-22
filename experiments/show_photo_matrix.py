@@ -1,19 +1,25 @@
-import random
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import torchvision
 import torchvision.transforms as T
 from torchvision.datasets import CIFAR10
 
-ROOT       = Path("../data")
-OUT_DIR    = Path("../results/plt")
+ROOT = Path("../data")
+OUT_DIR = Path("../results/plt")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_FILE   = OUT_DIR / "cifar10_grid.png"
+OUT_FILE = OUT_DIR / "cifar10_grid.png"
 
 CLASSES = [
-    "airplane", "automobile", "bird", "cat", "deer",
-    "dog",     "frog",       "horse", "ship", "truck",
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck",
 ]
 SAMPLES_PER_CLASS = 10
 
@@ -35,14 +41,19 @@ plt.subplots_adjust(wspace=0.05, hspace=0.05)
 
 for row, class_name in enumerate(CLASSES):
     axes[row, 0].text(
-        0.0, 0.5, class_name,
-        fontsize=10, fontweight="bold",
-        va="center", ha="left", transform=axes[row, 0].transAxes,
+        0.0,
+        0.5,
+        class_name,
+        fontsize=10,
+        fontweight="bold",
+        va="center",
+        ha="left",
+        transform=axes[row, 0].transAxes,
     )
     axes[row, 0].axis("off")
 
     for col, ds_idx in enumerate(idx_by_class[row], start=1):
-        img, _ = ds[ds_idx]                     # tensor [3×32×32], already 0–1
+        img, _ = ds[ds_idx]  # tensor [3×32×32], already 0–1
         axes[row, col].imshow(img.permute(1, 2, 0))
         axes[row, col].axis("off")
 
