@@ -15,7 +15,6 @@ from src.models.resnet18_with_pools import build_resnet18
 
 import matplotlib.pyplot as plt
 
-# ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 params: Dict[str, Any] = load_yaml()
 
@@ -70,7 +69,9 @@ def train(pool_type: str, freeze_encoder: bool) -> None:
         running_corrects = 0
         total_samples = 0
 
-        pbar = tqdm(train_loader, desc=f"[Train {tag}] Epoch {epoch}/{epochs}", leave=False)
+        pbar = tqdm(
+            train_loader, desc=f"[Train {tag}] Epoch {epoch}/{epochs}", leave=False
+        )
         for images, labels in pbar:
             images, labels = images.to(device), labels.to(device)
             logits = model(images)
@@ -98,39 +99,43 @@ def train(pool_type: str, freeze_encoder: bool) -> None:
     torch.save(model, save_path)
     print(f"Saved full model to {save_path}")
 
-
     epochs_range = range(1, epochs + 1)
 
     plt.figure(figsize=(8, 5))
-    plt.plot(epochs_range, train_losses, marker='o')
-    plt.title(f'pool: {pool_type}, freeze: {freeze_encoder}')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
+    plt.plot(epochs_range, train_losses, marker="o")
+    plt.title(f"pool: {pool_type}, freeze: {freeze_encoder}")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(plt_dir / f'pool_{pool_type}_freeze_{freeze_encoder}_loss.png')
+    plt.savefig(plt_dir / f"pool_{pool_type}_freeze_{freeze_encoder}_loss.png")
     plt.close()
 
     plt.figure(figsize=(8, 5))
-    plt.plot(epochs_range, train_acc, marker='o')
-    plt.title('Training Accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
+    plt.plot(epochs_range, train_acc, marker="o")
+    plt.title("Training Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(plt_dir / f'pool_{pool_type}_freeze_{freeze_encoder}_acc.png')
+    plt.savefig(plt_dir / f"pool_{pool_type}_freeze_{freeze_encoder}_acc.png")
     plt.close()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--pool_type", required=True, choices=["ae", "vae"],
-        help="Which encoder block to plug into ResNet (ae or vae)."
+        "--pool_type",
+        required=True,
+        choices=["ae", "vae"],
+        help="Which encoder block to plug into ResNet (ae or vae).",
     )
     parser.add_argument(
-        "--freeze_encoder", type=str2bool, default="true", metavar="BOOL",
-        help="Freeze the encoder’s parameters during training (true/false)."
+        "--freeze_encoder",
+        type=str2bool,
+        default="true",
+        metavar="BOOL",
+        help="Freeze the encoder’s parameters during training (true/false).",
     )
     args = parser.parse_args()
     train(args.pool_type, args.freeze_encoder)

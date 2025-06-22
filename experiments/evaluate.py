@@ -7,16 +7,34 @@ from typing import Dict, Any, Literal
 from src.utils.params_yaml import load_yaml
 from src.data.loaders import get_loaders
 
-# ---------------------------------------------------------------------------- #
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 params: Dict[str, Any] = load_yaml()
 
-ALLOWED: tuple[Literal[
-    "baseline", "ae", "vae", "vae_pretrained", "simclr", "byol",
-    "ae_frozen", "ae_unfrozen", "vae_frozen", "vae_unfrozen"
-], ...] = (
-    "baseline", "ae", "vae", "vae_pretrained", "simclr", "byol",
-    "ae_frozen", "ae_unfrozen", "vae_frozen", "vae_unfrozen"
+ALLOWED: tuple[
+    Literal[
+        "baseline",
+        "ae",
+        "vae",
+        "vae_pretrained",
+        "simclr",
+        "byol",
+        "ae_frozen",
+        "ae_unfrozen",
+        "vae_frozen",
+        "vae_unfrozen",
+    ],
+    ...,
+] = (
+    "baseline",
+    "ae",
+    "vae",
+    "vae_pretrained",
+    "simclr",
+    "byol",
+    "ae_frozen",
+    "ae_unfrozen",
+    "vae_frozen",
+    "vae_unfrozen",
 )
 
 
@@ -34,9 +52,9 @@ def evaluate(model_type: str) -> None:
 
     if model_type == "baseline":
         from torchvision.models import resnet18, ResNet18_Weights
+
         model = resnet18(weights=ResNet18_Weights.DEFAULT)
         model.fc = torch.nn.Linear(model.fc.in_features, params["model"]["num_classes"])
-        # load saved baseline weights
         state = torch.load(ckpt_path, map_location=device)
         model.load_state_dict(state)
     else:

@@ -1,6 +1,3 @@
-# src/models/ae.py
-
-import torch
 import torch.nn as nn
 from torch import Tensor
 
@@ -28,7 +25,7 @@ class Decoder(nn.Module):
                 kernel_size=3,
                 stride=2,
                 padding=1,
-                output_padding=1   # ensures exact upsampling
+                output_padding=1,
             ),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
@@ -38,9 +35,9 @@ class Decoder(nn.Module):
         return self.decoder(z)
 
 
-
 class Autoencoder(nn.Module):
     """AE pooling block that returns (recon, z) when training, but only recon when eval."""
+
     def __init__(self, in_channels: int = 512, latent_channels: int = 128) -> None:
         super().__init__()
         self.encoder = Encoder(in_channels, latent_channels)
@@ -63,7 +60,7 @@ class Autoencoder(nn.Module):
 class AELoss(nn.Module):
     def __init__(self, recon_loss_weight: float = 1.0):
         super().__init__()
-        self.recon_crit = nn.MSELoss(reduction='mean')
+        self.recon_crit = nn.MSELoss(reduction="mean")
         self.recon_loss_weight = recon_loss_weight
 
     def forward(self, recon_x: Tensor, x: Tensor) -> Tensor:

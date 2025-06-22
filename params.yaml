@@ -1,10 +1,10 @@
-interpreter: python3 #interpreter which will be used - python or python3
+interpreter: python #interpreter which will be used - python or python3
 
 seed: 50
 
 split:
-  train_percent: 1      # % of CIFAR-10 train set to use
-  test_percent: 0.1    # % of CIFAR-10 test set to use
+  train_percent: 10      # % of CIFAR-10 train set to use
+  test_percent: 10    # % of CIFAR-10 test set to use
 
 model:
   latent_channels: 128
@@ -13,16 +13,16 @@ model:
 
 baseline:
   train:
-    epochs: 1
+    epochs: 20
     learning_rate: 0.001
 
 ae:
   recon_loss_weight: 0.5
   pretrain:
-    epochs: 1
+    epochs: 20
     learning_rate: 0.001
   train:
-    epochs: 1
+    epochs: 20
     batch_size: 32
     learning_rate: 0.001
     cls_loss_weight: 1.0
@@ -32,10 +32,10 @@ vae:
   hidden_ch: 256
   latent_ch: 128
   pretrain:
-    epochs: 1
+    epochs: 20
     learning_rate: 0.0001
   train:
-    epochs: 1
+    epochs: 20
     batch_size: 64
     cls_loss_weight: 5
     learning_rate: 0.0001
@@ -45,14 +45,14 @@ simclr:
   projection_dim: 128
   temperature: 0.5
   train:
-    epochs: 1
+    epochs: 20
     batch_size: 256
     learning_rate: 0.001
 
 byol:
   projection_dim: 128
   train:
-    epochs: 1
+    epochs: 20
     batch_size: 256
     learning_rate: 0.001
 
