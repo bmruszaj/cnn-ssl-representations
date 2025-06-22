@@ -1,13 +1,13 @@
 seed: 50
 
 split:
-  train_percent: 1    # % of CIFAR-10 train set to use
-  test_percent: 0.1   # % of CIFAR-10 test set to use
+  train_percent: 1      # % of CIFAR-10 train set to use
+  test_percent: 0.1    # % of CIFAR-10 test set to use
 
 model:
   latent_channels: 128
   num_classes: 10
-  pretrained: true
+  pretrained: true      # ImageNet weights for ResNet trunk
 
 baseline:
   train:
@@ -15,13 +15,12 @@ baseline:
     learning_rate: 0.001
 
 ae:
-  freeze: false
   recon_loss_weight: 0.5
   pretrain:
-    epochs: 1            # AE pretraining epochs
-    learning_rate: 0.001 # AE pretraining LR
+    epochs: 1
+    learning_rate: 0.001
   train:
-    epochs: 5
+    epochs: 1
     batch_size: 32
     learning_rate: 0.001
     cls_loss_weight: 1.0
@@ -30,7 +29,6 @@ vae:
   beta: 10.0
   hidden_ch: 256
   latent_ch: 128
-  freeze: false
   pretrain:
     epochs: 1
     learning_rate: 0.0001
@@ -41,20 +39,19 @@ vae:
     learning_rate: 0.0001
     weight_decay: 0.000001
 
-simclr:  # Placeholder
+# Placeholders for future SSL encoders
+simclr:
   projection_dim: 128
   temperature: 0.5
-  freeze: false
   train:
-    epochs: 100
+    epochs: 1
     batch_size: 256
     learning_rate: 0.001
 
-byol:    # Placeholder
+byol:
   projection_dim: 128
-  freeze: false
   train:
-    epochs: 100
+    epochs: 1
     batch_size: 256
     learning_rate: 0.001
 
