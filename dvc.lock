@@ -1,12 +1,12 @@
 schema: '2.0'
 stages:
   prepare_split:
-    cmd: python -m src.data.prepare_split
+    cmd: python3 -m src.data.prepare_split
     deps:
     - path: src/data/prepare_split.py
       hash: md5
-      md5: dd443eccf1b47fbf0b48c2db970aec32
-      size: 879
+      md5: 5883f825cda15a320f00903851498eb3
+      size: 856
     params:
       params.yaml:
         seed: 50
@@ -15,19 +15,19 @@ stages:
     outs:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
   train_baseline:
-    cmd: python -m experiments.train_baseline
+    cmd: python3 -m experiments.train_baseline
     deps:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/train_baseline.py
       hash: md5
-      md5: 06a4de5e1071bdb4e22a96bd37142cd4
-      size: 1887
+      md5: 54fa9507b74d6cb968a2ccc3cc164c54
+      size: 1828
     params:
       params.yaml:
         baseline.train.epochs: 1
@@ -38,23 +38,23 @@ stages:
     outs:
     - path: checkpoints/baseline_model.pt
       hash: md5
-      md5: 861b4c0e93c006a08b5b81a3c8f93202
-      size: 44806256
+      md5: 4e3442a62cbb2e08c19298cb693a4a57
+      size: 44804939
   evaluate@baseline:
-    cmd: python -m experiments.evaluate --model_type baseline
+    cmd: python3 -m experiments.evaluate --model_type baseline
     deps:
     - path: checkpoints/baseline_model.pt
       hash: md5
-      md5: 861b4c0e93c006a08b5b81a3c8f93202
-      size: 44806256
+      md5: 4e3442a62cbb2e08c19298cb693a4a57
+      size: 44804939
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/evaluate.py
       hash: md5
-      md5: 7225543ac67026776fb5f77beb51275e
-      size: 2714
+      md5: 5d99a8baa4b6c20d2886c871584d97b0
+      size: 2607
     params:
       params.yaml:
         model.latent_channels: 128
@@ -62,8 +62,8 @@ stages:
     outs:
     - path: results/baseline_acc.json
       hash: md5
-      md5: 8f1d21beb116f40ea9d5d83edb5ca90d
-      size: 24
+      md5: 74ddd89eabab7fae2e94c1fb2abe933b
+      size: 22
   pretrain_ae:
     cmd: python -m pretrain.ae_pretrain
     deps:
@@ -267,24 +267,24 @@ stages:
       md5: 78b60adad7bf49569bf610194e780685
       size: 4736792
   pretrain_pool@vae:
-    cmd: python -m pretrain.pretrain_pool_encoder --pool_type vae
+    cmd: python3 -m pretrain.pretrain_pool_encoder --pool_type vae
     deps:
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: pretrain/pretrain_pool_encoder.py
       hash: md5
-      md5: 79aa5cc29bdd0db4a3f42bd003229e5e
-      size: 5149
+      md5: 6df987045ef5275d7705f593a7757e53
+      size: 5008
     - path: src/models/ae.py
       hash: md5
-      md5: 5590278dd5ef23f7635abb1f1b7de7e1
-      size: 2246
+      md5: 01643e3f833902dbb95a4ce9e214ef64
+      size: 2175
     - path: src/models/vae.py
       hash: md5
-      md5: 0ef7cfc58aa13929c08fcdaa4160e1b3
-      size: 3179
+      md5: b42fd156e1b7f904c826b945a9ac4b00
+      size: 3087
     params:
       params.yaml:
         ae.recon_loss_weight: 0.5
@@ -298,64 +298,64 @@ stages:
     outs:
     - path: checkpoints/vae_pretrained.pth
       hash: md5
-      md5: 4175a97fccdb1b384ebdfa0a3cb34241
-      size: 11186610
+      md5: 9cecc9793820d7bba87a9d35d303e427
+      size: 11186381
   train_with_pool@0:
-    cmd: python -m experiments.train_resnet_with_pool --pool_type ae 
+    cmd: python3 -m experiments.train_resnet_with_pool --pool_type vae 
       --freeze_encoder true
     deps:
-    - path: checkpoints/ae_pretrained.pth
+    - path: checkpoints/vae_pretrained.pth
       hash: md5
-      md5: 78b60adad7bf49569bf610194e780685
-      size: 4736792
+      md5: 9cecc9793820d7bba87a9d35d303e427
+      size: 11186381
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/train_resnet_with_pool.py
       hash: md5
-      md5: 6d0923e4feff3abdd2abb5efabd9b4b5
-      size: 3009
+      md5: 1d10416dd9abd73b3015028b8658a564
+      size: 4196
     params:
       params.yaml:
-        ae.train.epochs: 1
-        ae.train.learning_rate: 0.001
         model.latent_channels: 128
         model.num_classes: 10
         model.pretrained: true
+        vae.train.epochs: 3
+        vae.train.learning_rate: 0.0001
     outs:
-    - path: checkpoints/ae_frozen_model.pt
+    - path: checkpoints/vae_frozen_model.pt
       hash: md5
-      md5: aa97d8b13006f82b8c8aa56dec5e5ffc
-      size: 47245912
+      md5: 1a3337041e431dde10c1de93a0acfa3c
+      size: 56239387
   train_with_pool@1:
-    cmd: python -m experiments.train_resnet_with_pool --pool_type ae 
+    cmd: python3 -m experiments.train_resnet_with_pool --pool_type vae 
       --freeze_encoder false
     deps:
-    - path: checkpoints/ae_pretrained.pth
+    - path: checkpoints/vae_pretrained.pth
       hash: md5
-      md5: 78b60adad7bf49569bf610194e780685
-      size: 4736792
+      md5: 9cecc9793820d7bba87a9d35d303e427
+      size: 11186381
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/train_resnet_with_pool.py
       hash: md5
-      md5: 6d0923e4feff3abdd2abb5efabd9b4b5
-      size: 3009
+      md5: 1d10416dd9abd73b3015028b8658a564
+      size: 4196
     params:
       params.yaml:
-        ae.train.epochs: 1
-        ae.train.learning_rate: 0.001
         model.latent_channels: 128
         model.num_classes: 10
         model.pretrained: true
+        vae.train.epochs: 3
+        vae.train.learning_rate: 0.0001
     outs:
-    - path: checkpoints/ae_unfrozen_model.pt
+    - path: checkpoints/vae_unfrozen_model.pt
       hash: md5
-      md5: 392a4d4fc3302fdd03b586fefb532156
-      size: 47246178
+      md5: 388dac29fb4e3f7d557e8b99440469ad
+      size: 56239739
   train_with_pool@2:
     cmd: python -m experiments.train_resnet_with_pool --pool_type vae 
       --freeze_encoder true
@@ -461,20 +461,20 @@ stages:
       md5: 08a98ba303598134b67070a43bd6be13
       size: 24
   evaluate@vae_frozen:
-    cmd: python -m experiments.evaluate --model_type vae_frozen
+    cmd: python3 -m experiments.evaluate --model_type vae_frozen
     deps:
     - path: checkpoints/vae_frozen_model.pt
       hash: md5
-      md5: 9d5bba2f9b4d5bdc26513ade9acc2386
-      size: 56241340
+      md5: 1a3337041e431dde10c1de93a0acfa3c
+      size: 56239387
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/evaluate.py
       hash: md5
-      md5: 7225543ac67026776fb5f77beb51275e
-      size: 2714
+      md5: 5d99a8baa4b6c20d2886c871584d97b0
+      size: 2607
     params:
       params.yaml:
         model.latent_channels: 128
@@ -482,23 +482,23 @@ stages:
     outs:
     - path: results/vae_frozen_acc.json
       hash: md5
-      md5: b44445a87c92204e86c8f6957e387911
-      size: 24
+      md5: 2e0b64cfa6d5fec6a6cd15224f73d319
+      size: 22
   evaluate@vae_unfrozen:
-    cmd: python -m experiments.evaluate --model_type vae_unfrozen
+    cmd: python3 -m experiments.evaluate --model_type vae_unfrozen
     deps:
     - path: checkpoints/vae_unfrozen_model.pt
       hash: md5
-      md5: 17d0cae29eb2f6263f0305f9eda56a72
-      size: 56241688
+      md5: 388dac29fb4e3f7d557e8b99440469ad
+      size: 56239739
     - path: data/cifar_split.npz
       hash: md5
-      md5: 044aec2794f209f6cf92a3c813f8d7bc
-      size: 2560
+      md5: f2a1d148bdbad67aa54f66977bf3f469
+      size: 4600
     - path: experiments/evaluate.py
       hash: md5
-      md5: 7225543ac67026776fb5f77beb51275e
-      size: 2714
+      md5: 5d99a8baa4b6c20d2886c871584d97b0
+      size: 2607
     params:
       params.yaml:
         model.latent_channels: 128
@@ -506,5 +506,21 @@ stages:
     outs:
     - path: results/vae_unfrozen_acc.json
       hash: md5
-      md5: b44445a87c92204e86c8f6957e387911
-      size: 24
+      md5: 23b4b33e4e2dacdc3fe3c0505fadc562
+      size: 22
+  summarize:
+    cmd: python3 -m experiments.summarize
+    deps:
+    - path: experiments/evaluate.py
+      hash: md5
+      md5: 5d99a8baa4b6c20d2886c871584d97b0
+      size: 2607
+    - path: experiments/summarize.py
+      hash: md5
+      md5: 77599b4233546b729634968abdef8868
+      size: 1374
+    outs:
+    - path: results/plt/test_acc.png
+      hash: md5
+      md5: 3de6eae7c036a2065398c4b1f946c843
+      size: 22743
