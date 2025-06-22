@@ -1,11 +1,9 @@
-# Self-supervised alternatives to pooling in VGG-19  
-Analyzing classification and representation quality on CIFAR-10
+# Self-supervised Pooling Alternatives in ResNet-18
+Analyzing classification and representation quality on CIFAR-10 using AE and VAE pooling blocks
 
 ---
 
-This repository contains code and experiments for evaluating the impact of replacing the final max-pooling layer in the VGG-19 architecture with autoencoders, SimCLR, and BYOL.  
-The goal is to compare both the classification performance and the quality of learned representations on the CIFAR-10 dataset.  
-The project is developed as part of the **Representation Learning (2025)** course.
+This repository contains code and experiments for evaluating the impact of replacing the final pooling layer in ResNet-18 with self-supervised pooling modules (Autoencoder, Variational Autoencoder, SimCLR). The goal is to compare classification performance and representation quality on the CIFAR-10 dataset.
 
 ---
 
@@ -13,108 +11,107 @@ The project is developed as part of the **Representation Learning (2025)** cours
 
 ```
 .
-├── data/           # raw dataset or CIFAR-10 loader
-├── src/            # model architectures, loss functions, utilities
-├── experiments/    # scripts to train AE / SimCLR / BYOL
-├── results/        # saved metrics, models, and plots
-├── notebooks/      # Jupyter notebooks for result analysis
-├── params.yaml     # hyperparameters (for DVC)
-├── dvc.yaml        # pipeline definition (optional, if using DVC)
-├── requirements.txt
-├── Makefile
-└── README.md
+├── data/                          # CIFAR-10 dataset and train/test splits
+├── src/
+│   ├── data/                     # data loaders and split preparation
+│   ├── models/                   # model architectures (AE, VAE, ResNet)
+│   └── utils/                    # helper functions (YAML parameter loader)
+├── pretrain/                     # scripts to pre-train AE and VAE pooling blocks
+├── experiments/                  # training, evaluation, and visualization scripts
+├── results/                      # saved metrics, models, and plots
+├── params.yaml                   # hyperparameters and paths
+├── dvc.yaml / dvc.lock           # DVC pipeline definitions and lock file
+├── Makefile                      # convenience commands (install, lint, docker)
+├── cpu.dockerfile / gpu.dockerfile
+├── requirements-cpu.txt / requirements-gpu.txt
+└── README.md                     # this file
 ```
 
 ---
 
-## ⚙️ Environment setup
+## ⚙️ Environment Setup
 
-The project can be run locally or in a Docker container.  
-Code is compatible with both CPU and GPU. Dependency installation depends on the device used — simply specify `DEVICE=cpu` or `DEVICE=gpu`.
+Requirements: Python 3.12, pip ≥ 23. For GPU support, CUDA-compatible drivers are needed.
 
----
+1. Clone the repository and create a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # or .\.venv\Scripts\activate on Windows
+   ```
 
-### 🔧 Local installation (Python 3.12)
+2. Install dependencies for CPU or GPU:
+   ```bash
+   make install DEVICE=cpu
+   # or
+   make install DEVICE=gpu
+   ```
 
-We recommend using `virtualenv` or `conda`.
-
-1. Create and activate a virtual environment.
-
-2. Install dependencies:
-
-```bash
-make install DEVICE=cpu
-# or
-make install DEVICE=gpu
-```
-
-3. Launch Jupyter Notebook or Lab:
-
-```bash
-jupyter notebook
-# or
-jupyter lab
-```
+3. (Optional) Launch Jupyter Lab in Docker:
+   ```bash
+   make run_container DEVICE=cpu
+   ```
 
 ---
 
-### 🐳 Docker installation
+## 🐳 Docker Usage
 
-1. Build the image:
-
-```bash
-make build_image DEVICE=cpu
-# or
-make build_image DEVICE=gpu
-```
-
-2. Run the container (default port is 8888; you can override it with `PORT=8080`):
-
-```bash
-make run_container DEVICE=cpu
-```
-
-A link with a token will be displayed in the terminal for accessing the Jupyter interface.
-
----
-
-## 📦 System requirements
-
-- Python 3.12
-- pip ≥ 23
-- (for GPU) CUDA-compatible GPU (CUDA 12.1+)
-- Docker (if using containers)
+- Build image:
+  ```bash
+  make build_image DEVICE=cpu  # or DEVICE=gpu
+  ```
+- Run container:
+  ```bash
+  make run_container DEVICE=gpu
+  ```
 
 ---
 
 ## 🧪 Experiments
 
-- `experiments/baseline.py` – standard VGG-19
-- `experiments/train_ae.py` – VGG + autoencoder
-- `experiments/train_simclr.py` – SimCLR as pooling replacement
-- `experiments/train_byol.py` – BYOL as pooling replacement
-- `experiments/evaluate.py` – embedding quality evaluation (UMAP, CKA, RankMe)
+- `src/data/prepare_split.py` – generate train/test indices (DVC stage: prepare_split)
+- `pretrain/pretrain_pool_encoder.py` – pre-train AE and VAE pooling blocks (DVC stage: pretrain_pool)
+- `experiments/train_baseline.py` – train standard ResNet-18 classifier (DVC: train_baseline)
+- `experiments/train_resnet_with_pool.py` – train ResNet-18 using pretrained AE/VAE pooling (frozen or unfrozen) (DVC: train_with_pool)
+- `experiments/evaluate.py` – evaluate model accuracy (DVC: evaluate)
+- `experiments/summarize.py` – aggregate and plot results (DVC: summarize)
+- `experiments/show_photo_matrix.py` – visualize learned representations
 
----
+Notebooks for further analysis:
+- `experiments/simclr_experiments.ipynb`
 
-## 📊 Reproducibility
-
-- All hyperparameters are defined in `params.yaml`
-- The experiment pipeline is described in `dvc.yaml`
-- To reproduce results:
-
+To run the full DVC pipeline:
 ```bash
-dvc repro
+ dvc repro
 ```
 
 ---
 
-## 👥 Team
+## 📦 System Requirements
 
-- Person A – AE/VAE
-- Person B – SimCLR
-- Person C – BYOL + loss modification
+- Python 3.12
+- pip ≥ 23
+- (GPU only) CUDA 12.1+
+- Docker (optional)
 
 ---
 
-Need help with setup or training? Feel free to reach out! 💡
+## 🔄 Reproducibility
+
+All hyperparameters and paths are defined in `params.yaml`. To reproduce results:
+```bash
+ dvc repro
+```
+
+---
+
+## 💾 DVC Remote Configuration
+
+This project uses a remote DVC storage backend. To access and push data to the remote, create a `config.local` file in the repository root (this file is git-ignored) with your remote storage credentials. For example:
+
+```ini
+['remote "gdrive_remote"']
+gdrive_client_id = YOUR_ACCESS_KEY_ID
+gdrive_client_secret = YOUR_SECRET_ACCESS_KEY
+```
+
+You need to replace values with the ones that creators share. Once saved, you can run `dvc pull` / `dvc push` to sync data.
