@@ -3,7 +3,7 @@ Analyzing classification and representation quality on CIFAR-10 using AE and VAE
 
 ---
 
-This repository contains code and experiments for evaluating the impact of replacing the final pooling layer in ResNet-18 with self-supervised pooling modules (Autoencoder, Variational Autoencoder, SimCLR). The goal is to compare classification performance and representation quality on the CIFAR-10 dataset.
+This repository contains code and experiments for evaluating the impact of replacing the final pooling layer in ResNet-18 with self-supervised pooling modules (Autoencoder, Variational Autoencoder, SimCLR, BYOL). The goal is to compare classification performance and representation quality on the CIFAR-10 dataset.
 
 ---
 
